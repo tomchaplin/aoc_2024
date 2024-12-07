@@ -18,7 +18,7 @@ impl Equation {
     }
 
     fn has_solution<const ALLOW_CONCAT: bool>(&self) -> bool {
-        self.start_work().has_solution::<ALLOW_CONCAT>()
+        self.start_work().yields_solution::<ALLOW_CONCAT>()
     }
 }
 
@@ -34,38 +34,46 @@ fn concat(a: usize, b: usize) -> usize {
 }
 
 impl<'a> WorkingEquation<'a> {
-    fn has_solution<const ALLOW_CONCAT: bool>(&self) -> bool {
-        if self.remaining_idx == self.equation.numbers.len() {
-            return self.left_evaluated == self.equation.target;
-        }
-        if self.left_evaluated > self.equation.target {
-            return false;
-        }
-        let add_attempt = WorkingEquation {
+    fn add_attempt(&self) -> Self {
+        WorkingEquation {
             equation: self.equation,
             left_evaluated: self.left_evaluated + self.equation.numbers[self.remaining_idx],
             remaining_idx: self.remaining_idx + 1,
-        };
-        let mult_attempt = WorkingEquation {
+        }
+    }
+
+    fn mult_attempt(&self) -> Self {
+        WorkingEquation {
             equation: self.equation,
             left_evaluated: self.left_evaluated * self.equation.numbers[self.remaining_idx],
             remaining_idx: self.remaining_idx + 1,
-        };
-        if !ALLOW_CONCAT {
-            add_attempt.has_solution::<false>() || mult_attempt.has_solution::<false>()
-        } else {
-            let concat_attempt = WorkingEquation {
-                equation: self.equation,
-                left_evaluated: concat(
-                    self.left_evaluated,
-                    self.equation.numbers[self.remaining_idx],
-                ),
-                remaining_idx: self.remaining_idx + 1,
-            };
-            add_attempt.has_solution::<true>()
-                || mult_attempt.has_solution::<true>()
-                || concat_attempt.has_solution::<true>()
         }
+    }
+
+    fn concat_attempt(&self) -> Self {
+        WorkingEquation {
+            equation: self.equation,
+            left_evaluated: concat(
+                self.left_evaluated,
+                self.equation.numbers[self.remaining_idx],
+            ),
+            remaining_idx: self.remaining_idx + 1,
+        }
+    }
+
+    fn yields_solution<const ALLOW_CONCAT: bool>(&self) -> bool {
+        // Used all the numbers, did we get the right answer?
+        if self.remaining_idx == self.equation.numbers.len() {
+            return self.left_evaluated == self.equation.target;
+        }
+        // We can only increase so short-circuit failure
+        if self.left_evaluated > self.equation.target {
+            return false;
+        }
+
+        self.add_attempt().yields_solution::<ALLOW_CONCAT>()
+            || self.mult_attempt().yields_solution::<ALLOW_CONCAT>()
+            || (ALLOW_CONCAT && self.concat_attempt().yields_solution::<ALLOW_CONCAT>())
     }
 }
 
