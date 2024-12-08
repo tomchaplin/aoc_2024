@@ -121,7 +121,7 @@ impl Walker {
         // Alter grid
         self.set_state(&pos_in_front, State::Occupado);
 
-        println!("Running a test at {:?} {:?}", self.position, self.direction);
+        //println!("Running a test at {:?} {:?}", self.position, self.direction);
 
         // Test for loop
         let mut seen_states = HashSet::new();
