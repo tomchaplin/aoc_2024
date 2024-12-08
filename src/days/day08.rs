@@ -97,9 +97,6 @@ impl ProblemSolution for Solution {
     fn solve_a(&self, input: &str) -> Option<String> {
         let grid_summary = parse(input);
         let antinodes: HashSet<_> = grid_summary.get_antinodes::<true>().collect();
-        for pos in antinodes.iter() {
-            println!("{:?}", pos);
-        }
         let answer = antinodes.len();
         Some(answer.to_string())
     }
@@ -107,9 +104,6 @@ impl ProblemSolution for Solution {
     fn solve_b(&self, input: &str) -> Option<String> {
         let grid_summary = parse(input);
         let antinodes: HashSet<_> = grid_summary.get_antinodes::<false>().collect();
-        for pos in antinodes.iter() {
-            println!("{:?}", pos);
-        }
         let answer = antinodes.len();
         Some(answer.to_string())
     }
