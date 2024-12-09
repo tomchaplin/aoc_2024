@@ -53,7 +53,7 @@ fn execute_defrag(descriptors: &mut Vec<BlockDescriptor>, defrag: (usize, usize)
     descriptors.swap(defrag.0, defrag.1 + 1);
 }
 
-fn find_defrag_opportunity(descriptors: &mut Vec<BlockDescriptor>) -> Option<(usize, usize)> {
+fn find_defrag_opportunity(descriptors: &Vec<BlockDescriptor>) -> Option<(usize, usize)> {
     let mut i = 0;
     let mut j = descriptors.len() - 1;
     loop {
@@ -71,7 +71,7 @@ fn find_defrag_opportunity(descriptors: &mut Vec<BlockDescriptor>) -> Option<(us
                 i += 1;
             }
             (_, BlockDescriptor::Empty(_)) => j -= 1,
-            (BlockDescriptor::Empty(len_empty), BlockDescriptor::File(id, len_file)) => {
+            (BlockDescriptor::Empty(len_empty), BlockDescriptor::File(_id, len_file)) => {
                 if len_empty < len_file {
                     i += 1;
                 } else {
@@ -110,10 +110,6 @@ fn sort_disk_map(map: &mut Vec<Option<usize>>) {
     }
 }
 
-fn collect_disk_map(input: &str) -> Vec<Option<usize>> {
-    produce_disk_map(input).collect()
-}
-
 fn produce_disk_map(input: &str) -> impl Iterator<Item = Option<usize>> + '_ {
     let counts = parse(input);
     let ids = produce_identifiers();
@@ -138,7 +134,7 @@ fn parse(input: &str) -> impl Iterator<Item = usize> + '_ {
 
 impl ProblemSolution for Solution {
     fn solve_a(&self, input: &str) -> Option<String> {
-        let mut map = collect_disk_map(input);
+        let mut map: Vec<_> = produce_disk_map(input).collect();
         sort_disk_map(&mut map);
         let checksum: usize = map
             .into_iter()
@@ -150,7 +146,7 @@ impl ProblemSolution for Solution {
 
     fn solve_b(&self, input: &str) -> Option<String> {
         let mut blocks: Vec<_> = produce_block_descriptors(input).collect();
-        while let Some(defrag) = find_defrag_opportunity(&mut blocks) {
+        while let Some(defrag) = find_defrag_opportunity(&blocks) {
             execute_defrag(&mut blocks, defrag);
         }
         let checksum = get_checksum(&blocks);
