@@ -88,11 +88,8 @@ impl Grid {
     }
 
     fn corner_count(&self, pos: &Position) -> usize {
-        let deltas = [(-1, 0), (1, 0), (0, -1), (0, 1)];
         let posi = (pos.0 as isize, pos.1 as isize);
-        deltas
-            .into_iter()
-            .filter(|d| self.is_outward(&pos, *d))
+        self.outward_directions(pos)
             .filter(|d| {
                 // Given an outward direction (dir)
                 // Move over one position and we should still be in the same region and dir should still be an outward direction
