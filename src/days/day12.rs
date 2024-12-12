@@ -126,7 +126,7 @@ impl Grid {
         }
     }
 
-    fn try_position_inner(&self, pos: (isize, isize)) -> Option<Position> {
+    fn try_position(&self, pos: (isize, isize)) -> Option<GridPosition<'_>> {
         let (height, width) = self.bounds();
         if pos.0 < 0 || pos.1 < 0 {
             return None;
@@ -135,12 +135,8 @@ impl Grid {
         if pos.0 >= height || pos.1 >= width {
             None
         } else {
-            Some(pos)
+            Some(self.position(pos))
         }
-    }
-
-    fn try_position(&self, pos: (isize, isize)) -> Option<GridPosition<'_>> {
-        Some(self.position(self.try_position_inner(pos)?))
     }
 
     fn get_all_regions(&self) -> Vec<HashSet<Position>> {
