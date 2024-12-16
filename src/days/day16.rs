@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::iter;
 
 use crate::ProblemSolution;
 #[allow(unused_imports)]
@@ -13,6 +13,7 @@ enum Direction {
     West,
 }
 
+use rustc_hash::{FxHashMap, FxHashSet};
 use Direction::*;
 
 impl Direction {
@@ -72,27 +73,23 @@ impl ReindeerState {
         }
     }
 
-    fn moves(&self, maze: &Maze) -> Vec<(ReindeerState, usize)> {
-        let mut states = vec![
-            (
-                ReindeerState {
-                    position: self.position,
-                    direction: self.direction.rotate_cw(),
-                },
-                1000,
-            ),
-            (
-                ReindeerState {
-                    position: self.position,
-                    direction: self.direction.rotate_ccw(),
-                },
-                1000,
-            ),
-        ];
-        if let Some(in_front) = self.try_in_front(maze) {
-            states.push((in_front, 1));
-        }
-        states
+    fn moves<'a>(&'a self, maze: &'a Maze) -> impl Iterator<Item = (ReindeerState, usize)> + 'a {
+        let cw = iter::once((
+            ReindeerState {
+                position: self.position,
+                direction: self.direction.rotate_cw(),
+            },
+            1000,
+        ));
+        let ccw = iter::once((
+            ReindeerState {
+                position: self.position,
+                direction: self.direction.rotate_ccw(),
+            },
+            1000,
+        ));
+        let in_front = self.try_in_front(maze).map(|in_fr| (in_fr, 1));
+        cw.chain(ccw).chain(in_front)
     }
 }
 
@@ -131,16 +128,17 @@ impl Maze {
 
 struct Dijkstra<'a> {
     maze: &'a Maze,
-    unvisited: HashSet<ReindeerState>,
-    paths: HashMap<ReindeerState, (HashSet<Vec<ReindeerState>>, usize)>,
+    unvisited: FxHashSet<ReindeerState>,
+    paths: FxHashMap<ReindeerState, (FxHashSet<Vec<ReindeerState>>, usize)>,
     current_node: ReindeerState,
-    current_paths: HashSet<Vec<ReindeerState>>,
+    current_paths: FxHashSet<Vec<ReindeerState>>,
     current_cost: usize,
+    target: (usize, usize),
 }
 
 // TODO: Very slow, could speed up by ignoring any paths longer than minimal path found to endpoint
 impl<'a> Dijkstra<'a> {
-    fn advance(&mut self) -> Option<(ReindeerState, (HashSet<Vec<ReindeerState>>, usize))> {
+    fn advance(&mut self) -> Option<(ReindeerState, (FxHashSet<Vec<ReindeerState>>, usize))> {
         let moves = self.current_node.moves(self.maze);
         for (next_state, add_cost) in moves {
             let total_cost = self.current_cost + add_cost;
@@ -178,13 +176,16 @@ impl<'a> Dijkstra<'a> {
 
     fn run(&mut self) {
         while let Some((next_node, (next_paths, next_cost))) = self.advance() {
+            if next_node.position == self.target {
+                return;
+            }
             self.current_node = next_node;
             self.current_cost = next_cost;
             self.current_paths = next_paths;
         }
     }
 
-    fn init(maze: &'a Maze, start: ReindeerState) -> Self {
+    fn init(maze: &'a Maze, start: ReindeerState, target: (usize, usize)) -> Self {
         let (height, width) = maze.bounds();
         let unvisited = (0..height)
             .flat_map(|i| {
@@ -199,7 +200,7 @@ impl<'a> Dijkstra<'a> {
             })
             .collect();
         let empty_path = vec![];
-        let mut current_paths = HashSet::default();
+        let mut current_paths = FxHashSet::default();
         current_paths.insert(empty_path);
         Self {
             maze,
@@ -208,6 +209,7 @@ impl<'a> Dijkstra<'a> {
             current_node: start,
             current_cost: 0,
             current_paths,
+            target,
         }
     }
 }
@@ -248,6 +250,7 @@ impl ProblemSolution for Solution {
                 position: start,
                 direction: East,
             },
+            end,
         );
         algo.run();
         let answer = algo
@@ -268,6 +271,7 @@ impl ProblemSolution for Solution {
                 position: start,
                 direction: East,
             },
+            end,
         );
         algo.run();
         let (_, (paths, _)) = algo
@@ -276,7 +280,7 @@ impl ProblemSolution for Solution {
             .filter(|(k, _v)| k.position == end)
             .min_by_key(|(_k, v)| v.1)
             .unwrap();
-        let on_minimal: HashSet<_> = paths
+        let on_minimal: FxHashSet<_> = paths
             .into_iter()
             .flat_map(|p| p.into_iter().map(|s| s.position))
             .collect();
