@@ -132,32 +132,55 @@ impl Maze {
 struct Dijkstra<'a> {
     maze: &'a Maze,
     unvisited: HashSet<ReindeerState>,
-    distances: HashMap<ReindeerState, usize>,
     paths: HashMap<ReindeerState, (HashSet<Vec<ReindeerState>>, usize)>,
     current_node: ReindeerState,
+    current_paths: HashSet<Vec<ReindeerState>>,
     current_cost: usize,
 }
 
 // TODO: Very slow, could speed up by ignoring any paths longer than minimal path found to endpoint
 impl<'a> Dijkstra<'a> {
-    fn advance(&mut self) -> Option<(ReindeerState, usize)> {
+    fn advance(&mut self) -> Option<(ReindeerState, (HashSet<Vec<ReindeerState>>, usize))> {
         let moves = self.current_node.moves(self.maze);
         for (next_state, add_cost) in moves {
             let total_cost = self.current_cost + add_cost;
-            let current_dist = self.distances.entry(next_state).or_insert(usize::MAX);
-            *current_dist = (*current_dist).min(total_cost);
+            let (current_paths, current_dist) = self
+                .paths
+                .entry(next_state)
+                .or_insert((Default::default(), usize::MAX));
+            if total_cost > *current_dist {
+                continue;
+            } else if total_cost < *current_dist {
+                *current_dist = total_cost;
+                *current_paths = self
+                    .current_paths
+                    .iter()
+                    .cloned()
+                    .map(|mut p| {
+                        p.push(next_state);
+                        p
+                    })
+                    .collect();
+            } else {
+                for p in self.current_paths.iter() {
+                    let mut new_p = p.clone();
+                    new_p.push(next_state);
+                    current_paths.insert(new_p);
+                }
+            }
         }
         self.unvisited.remove(&self.current_node);
         self.unvisited
             .iter()
-            .filter_map(|st| Some((*st, *self.distances.get(st)?)))
-            .min_by_key(|(_st, dist)| *dist)
+            .filter_map(|st| Some((*st, self.paths.get(st)?.clone())))
+            .min_by_key(|(_st, (_paths, dist))| *dist)
     }
 
     fn run(&mut self) {
-        while let Some((next_node, next_cost)) = self.advance() {
+        while let Some((next_node, (next_paths, next_cost))) = self.advance() {
             self.current_node = next_node;
             self.current_cost = next_cost;
+            self.current_paths = next_paths;
         }
     }
 
@@ -175,12 +198,16 @@ impl<'a> Dijkstra<'a> {
                     })
             })
             .collect();
+        let empty_path = vec![];
+        let mut current_paths = HashSet::default();
+        current_paths.insert(empty_path);
         Self {
             maze,
             unvisited,
-            distances: Default::default(),
+            paths: Default::default(),
             current_node: start,
             current_cost: 0,
+            current_paths,
         }
     }
 }
@@ -211,6 +238,7 @@ fn parse(input: &str) -> (Maze, (usize, usize), (usize, usize)) {
     (Maze { grid }, start.unwrap(), end.unwrap())
 }
 
+// These solutions are embarassingly slow
 impl ProblemSolution for Solution {
     fn solve_a(&self, input: &str) -> Option<String> {
         let (maze, start, end) = parse(input);
@@ -223,16 +251,36 @@ impl ProblemSolution for Solution {
         );
         algo.run();
         let answer = algo
-            .distances
+            .paths
             .into_iter()
             .filter(|(k, _v)| k.position == end)
-            .map(|(_k, v)| v)
+            .map(|(_k, v)| v.1)
             .min()
             .unwrap();
         Some(answer.to_string())
     }
 
     fn solve_b(&self, input: &str) -> Option<String> {
-        None
+        let (maze, start, end) = parse(input);
+        let mut algo = Dijkstra::init(
+            &maze,
+            ReindeerState {
+                position: start,
+                direction: East,
+            },
+        );
+        algo.run();
+        let (_, (paths, _)) = algo
+            .paths
+            .into_iter()
+            .filter(|(k, _v)| k.position == end)
+            .min_by_key(|(_k, v)| v.1)
+            .unwrap();
+        let on_minimal: HashSet<_> = paths
+            .into_iter()
+            .flat_map(|p| p.into_iter().map(|s| s.position))
+            .collect();
+        let answer = on_minimal.len();
+        Some(answer.to_string())
     }
 }
