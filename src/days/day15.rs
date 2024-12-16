@@ -1,12 +1,9 @@
-use std::{
-    collections::{hash_set, HashSet},
-    fmt::Display,
-    iter,
-};
+use std::fmt::Display;
 
 use crate::ProblemSolution;
 #[allow(unused_imports)]
 use aoc_parse::{parser, prelude::*};
+use colored::Colorize;
 pub struct Solution {}
 
 #[derive(Clone, Copy, Debug)]
@@ -42,12 +39,12 @@ impl Display for Warehouse {
                     f,
                     "{}",
                     match cell {
-                        State::Empty => ".",
-                        State::Wall => "#",
-                        State::Box => "O",
-                        State::BoxLeft => "[",
-                        State::BoxRight => "]",
-                        State::Robot => "@",
+                        State::Empty => ".".dimmed().black(),
+                        State::Wall => "#".red(),
+                        State::Box => "O".white(),
+                        State::BoxLeft => "[".white(),
+                        State::BoxRight => "]".white(),
+                        State::Robot => "@".bold().green(),
                     }
                 )?
             }
@@ -66,14 +63,14 @@ impl Warehouse {
         self.grid[pos.0][pos.1] = state;
     }
 
-    fn try_bump_a(&mut self, pos: (usize, usize), delta: (isize, isize)) -> bool {
+    fn try_bump(&mut self, pos: (usize, usize), delta: (isize, isize)) -> bool {
         match self.get_state(pos) {
             State::Empty => return true,
             State::Wall => return false,
             State::Box | State::Robot => {
                 let target = (pos.0 as isize + delta.0, pos.1 as isize + delta.1);
                 let target = (target.0 as usize, target.1 as usize);
-                if self.try_bump_a(target, delta) {
+                if self.try_bump(target, delta) {
                     self.set_state(target, self.get_state(pos));
                     self.set_state(pos, State::Empty);
                     true
@@ -150,7 +147,7 @@ impl Warehouse {
 
     fn do_move_a(&mut self, mv: char) {
         let delta = move_to_delta(mv);
-        if self.try_bump_a(self.robot_pos, delta) {
+        if self.try_bump(self.robot_pos, delta) {
             let new_pos = (
                 self.robot_pos.0 as isize + delta.0,
                 self.robot_pos.1 as isize + delta.1,
@@ -230,7 +227,7 @@ impl ProblemSolution for Solution {
             warehouse.do_move_a(mv);
         }
         let answer = warehouse.sum_gps();
-        println!("{}", warehouse);
+        //println!("{}", warehouse);
         Some(answer.to_string())
     }
 
@@ -241,7 +238,7 @@ impl ProblemSolution for Solution {
             warehouse.do_move_b(mv);
         }
         let answer = warehouse.sum_gps();
-        println!("{}", warehouse);
+        //println!("{}", warehouse);
         Some(answer.to_string())
     }
 }

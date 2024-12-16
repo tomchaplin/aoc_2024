@@ -123,7 +123,6 @@ impl ProblemSolution for Solution {
                 .map(|r| r.position.1 as f64)
                 .collect::<Vec<f64>>();
             let y_var = pos_variance(y_poses);
-            println!("t={}, x_var={}, y_var={}", t, x_var, y_var);
             if x_var < trigger && y_var < trigger {
                 break;
             }
